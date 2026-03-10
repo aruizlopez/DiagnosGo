@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- TensorFlow.js - Orden de carga optimizado para navegador -->
+    <!-- TensorFlow.js y MoveNet para detección de cuerpo -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.2.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.2.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.2.0"></script>
@@ -18,8 +18,8 @@
         
         body {
             font-family: 'JetBrains Mono', monospace;
-            background-color: #020617;
-            color: white;
+            background-color: #f8fafc;
+            color: #1e293b;
             overflow: hidden;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -29,8 +29,8 @@
             position: absolute;
             width: 100%;
             height: 2px;
-            background: rgba(96, 165, 250, 0.8);
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+            background: rgba(16, 185, 129, 0.8);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
             animation: scanMove 3s infinite linear;
             z-index: 40;
         }
@@ -52,82 +52,105 @@
             pointer-events: none;
             z-index: 30;
         }
+
+        #profile-drawer {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #profile-drawer.closed {
+            transform: translateX(100%);
+        }
     </style>
 </head>
 <body class="h-screen flex items-center justify-center p-4">
 
     <!-- PANTALLA DE INICIO DE SESIÓN -->
-    <div id="login-screen" class="fixed inset-0 bg-slate-950 z-[100] flex flex-col items-center justify-center p-4">
+    <div id="login-screen" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center p-4">
         <div class="w-full max-w-lg flex flex-col items-center gap-12 text-center">
             <div class="flex flex-col items-center italic">
-                <span class="text-white font-black tracking-[0.5em] text-lg mb-4">DIAGNOS</span>
+                <span class="text-slate-400 font-black tracking-[0.5em] text-lg mb-4">DIAGNOS</span>
                 <div class="relative w-48 h-48 flex items-center justify-center">
-                    <span class="text-white font-black text-5xl absolute -left-12 bottom-12">G</span>
-                    <div id="main-logo-svg" class="w-full h-full drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]"></div>
-                    <span class="text-white font-black text-5xl absolute -right-12 bottom-12">O</span>
+                    <span class="text-emerald-500 font-black text-5xl absolute -left-12 bottom-12">G</span>
+                    <div id="main-logo-svg" class="w-full h-full drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
+                    <span class="text-emerald-500 font-black text-5xl absolute -right-12 bottom-12">O</span>
                 </div>
             </div>
 
-            <div class="w-full max-w-md bg-[#0a0f1a]/80 p-8 rounded-[2rem] border border-white/10 backdrop-blur-md shadow-2xl space-y-4">
-                <input type="text" id="input-id" placeholder="ID PACIENTE" class="w-full bg-black/40 border border-slate-800 rounded-xl p-4 text-xs text-center outline-none focus:border-blue-500 font-mono text-white tracking-widest uppercase">
-                <input type="text" id="input-doctor" placeholder="MÉDICO FACULTATIVO" class="w-full bg-black/40 border border-slate-800 rounded-xl p-4 text-xs text-center outline-none focus:border-blue-500 font-mono text-white tracking-widest uppercase">
+            <div class="w-full max-w-md bg-slate-50 p-8 rounded-[2rem] border border-emerald-100 shadow-xl space-y-4">
+                <input type="text" id="input-id" placeholder="ID PACIENTE" class="w-full bg-white border border-slate-200 rounded-xl p-4 text-xs text-center outline-none focus:border-emerald-500 font-mono text-slate-700 tracking-widest uppercase">
+                <input type="text" id="input-doctor" placeholder="MÉDICO FACULTATIVO" class="w-full bg-white border border-slate-200 rounded-xl p-4 text-xs text-center outline-none focus:border-emerald-500 font-mono text-slate-700 tracking-widest uppercase">
                 <div class="grid grid-cols-2 gap-4">
-                    <input type="date" id="input-date" value="2026-03-05" class="bg-black/40 border border-slate-800 rounded-xl p-3 text-[10px] text-white font-mono">
-                    <input type="password" id="input-pin" placeholder="PIN (0000)" class="bg-black/40 border border-slate-800 rounded-xl p-3 text-xs text-center font-mono text-white tracking-[0.5em]">
+                    <input type="date" id="input-date" value="2026-03-05" class="bg-white border border-slate-200 rounded-xl p-3 text-[10px] text-slate-700 font-mono">
+                    <input type="password" id="input-pin" placeholder="PIN" class="bg-white border border-slate-200 rounded-xl p-3 text-xs text-center font-mono text-slate-700 tracking-[0.5em]">
                 </div>
-                <button id="btn-login" class="w-full bg-blue-600/20 hover:bg-blue-600 border border-blue-500/30 py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2">
-                    <i data-lucide="user-check"></i> Iniciar Sesión
+                <button id="btn-login" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 disabled:opacity-50">
+                    <i data-lucide="user-check" id="login-icon"></i> <span id="login-text">Iniciar Sesión</span>
                 </button>
             </div>
-            <p class="text-[8px] text-slate-500 mt-4 tracking-[0.2em]">SISTEMA DE DIAGNÓSTICO BIOMÉTRICO V.2.5.0</p>
+            <p class="text-[8px] text-slate-400 mt-4 tracking-[0.2em]">SISTEMA DE DIAGNÓSTICO BIOMÉTRICO V.2.5.0</p>
         </div>
     </div>
 
     <!-- MONITOR PRINCIPAL -->
-    <div id="main-monitor" class="hidden w-full max-w-6xl aspect-[16/9] bg-slate-900 rounded-[3rem] p-2 border-[12px] border-slate-800 shadow-2xl relative overflow-hidden transition-all duration-500">
-        <div class="flex h-full bg-black text-white relative">
+    <div id="main-monitor" class="hidden w-full max-w-6xl aspect-[16/9] bg-white rounded-[3rem] p-2 border-[12px] border-slate-100 shadow-2xl relative overflow-hidden transition-all duration-500">
+        <div class="flex h-full bg-white text-slate-800 relative">
             
             <!-- BARRA LATERAL -->
-            <div class="w-24 border-r border-blue-500/20 bg-slate-950 flex flex-col items-center py-8 gap-8 relative z-50">
-                <button onclick="switchTab('scan')" id="nav-scan" class="nav-btn text-blue-500 flex flex-col items-center gap-1 transition-colors">
+            <div class="w-24 border-r border-slate-100 bg-slate-50 flex flex-col items-center py-8 gap-8 relative z-[60]">
+                <button onclick="switchTab('scan')" id="nav-scan" class="nav-btn text-emerald-600 flex flex-col items-center gap-1 transition-colors">
                     <i data-lucide="activity"></i>
                     <span class="text-[7px] font-black">ESCANEAR</span>
                 </button>
-                <button onclick="switchTab('tests')" id="nav-tests" class="nav-btn text-slate-600 flex flex-col items-center gap-1 transition-colors">
+                <button onclick="switchTab('tests')" id="nav-tests" class="nav-btn text-slate-400 flex flex-col items-center gap-1 transition-colors">
                     <i data-lucide="layers"></i>
                     <span class="text-[7px] font-black">PRUEBAS</span>
                 </button>
-                <button onclick="switchTab('history')" id="nav-history" class="nav-btn text-slate-600 flex flex-col items-center gap-1 transition-colors">
+                <button onclick="switchTab('history')" id="nav-history" class="nav-btn text-slate-400 flex flex-col items-center gap-1 transition-colors">
                     <i data-lucide="history"></i>
                     <span class="text-[7px] font-black">HISTORIAL</span>
                 </button>
-                <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn text-slate-600 flex flex-col items-center gap-1 transition-colors">
+                <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn text-slate-400 flex flex-col items-center gap-1 transition-colors">
                     <i data-lucide="settings"></i>
                     <span class="text-[7px] font-black">AJUSTES</span>
                 </button>
 
                 <div class="mt-auto mb-2 flex flex-col items-center gap-6">
-                    <button class="text-slate-600 hover:text-blue-400 transition-colors"><i data-lucide="user"></i></button>
-                    <button onclick="logout()" class="text-red-500/40 hover:text-red-500 transition-colors"><i data-lucide="power"></i></button>
+                    <button onclick="toggleProfile()" class="relative group">
+                        <img id="sidebar-avatar" class="w-10 h-10 rounded-full border-2 border-slate-200 group-hover:border-emerald-500 transition-all object-cover">
+                        <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
+                    </button>
+                    <button onclick="logout()" class="text-red-400 hover:text-red-500 transition-colors"><i data-lucide="power"></i></button>
                 </div>
             </div>
 
             <!-- CONTENIDO PRINCIPAL -->
-            <div class="flex-1 flex flex-col bg-gradient-to-br from-black to-slate-950 overflow-hidden">
+            <div class="flex-1 flex flex-col bg-white overflow-hidden relative">
+                
+                <!-- PANEL DE PERFIL (DESPLEGABLE) -->
+                <div id="profile-drawer" class="closed absolute inset-y-0 right-0 w-80 bg-white border-l border-slate-100 z-[70] shadow-2xl flex flex-col p-8">
+                    <div class="flex justify-between items-center mb-8">
+                        <span class="text-[10px] font-black text-emerald-600 tracking-widest">EXPEDIENTE DIGITAL</span>
+                        <button onclick="toggleProfile()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x"></i></button>
+                    </div>
+                    
+                    <div id="profile-content" class="flex-1 overflow-y-auto pr-2 space-y-6">
+                        <!-- Generado dinámicamente -->
+                    </div>
+                </div>
+
                 <!-- Cabecera -->
-                <div class="flex justify-between items-center px-6 py-4 bg-slate-900 border-b border-blue-500/30">
+                <div class="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-100">
                     <div class="flex items-center gap-3">
                         <div id="mini-logo" class="w-10 h-10"></div>
                         <div class="flex flex-col leading-none">
-                            <span class="text-[8px] text-white font-black">DIAGNOS</span>
-                            <span class="text-blue-500 font-black text-sm italic">G O</span>
+                            <span class="text-[8px] text-slate-400 font-black">DIAGNOS</span>
+                            <span class="text-emerald-600 font-black text-sm italic">G O</span>
                         </div>
                     </div>
                     <div class="flex flex-col items-end">
-                        <span id="display-id" class="text-[10px] font-black text-blue-400 tracking-widest"></span>
+                        <span id="display-id" class="text-[10px] font-black text-emerald-600 tracking-widest"></span>
                         <div class="flex items-center gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                            <span id="display-test" class="text-[8px] text-slate-500 tracking-[0.2em]">RADIOGRAFÍA</span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span id="display-test" class="text-[8px] text-slate-400 tracking-[0.2em]">RADIOGRAFÍA</span>
                         </div>
                     </div>
                 </div>
@@ -135,96 +158,92 @@
                 <div id="tab-content" class="flex-1 p-6 relative overflow-y-auto">
                     <!-- PESTAÑA ESCANEAR -->
                     <div id="tab-scan" class="h-full flex flex-col gap-6">
-                        <div class="flex-1 bg-slate-950 rounded-[2.5rem] border border-blue-500/20 relative overflow-hidden group">
-                            <!-- Video y Canvas de IA -->
-                            <video id="video-element" class="hidden w-full h-full object-cover opacity-60 brightness-110 grayscale" autoplay playsinline muted></video>
+                        <div class="flex-1 bg-slate-50 rounded-[2.5rem] border border-slate-100 relative overflow-hidden group">
+                            <video id="video-element" class="hidden w-full h-full object-cover opacity-80 brightness-105" autoplay playsinline muted></video>
                             <canvas id="canvas-overlay"></canvas>
                             
-                            <!-- Placeholder de Cámara -->
-                            <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/50">
+                            <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/50">
                                 <div class="relative">
-                                    <i data-lucide="camera" class="w-20 h-20 text-blue-500/10 pulse-soft"></i>
-                                    <div class="absolute inset-0 bg-blue-500/5 blur-xl animate-pulse"></div>
+                                    <i data-lucide="cpu" class="w-20 h-20 text-emerald-500/20 pulse-soft"></i>
+                                    <div class="absolute inset-0 bg-emerald-500/5 blur-xl animate-pulse"></div>
                                 </div>
-                                <div class="mt-4 px-6 py-2 border border-blue-500/20 rounded-full bg-blue-500/5 text-[10px] text-blue-400 font-bold tracking-widest uppercase">Esperando Conexión Biometría</div>
+                                <div id="camera-status-text" class="mt-4 px-6 py-2 border border-emerald-500/20 rounded-full bg-emerald-500/5 text-[10px] text-emerald-600 font-bold tracking-widest uppercase text-center">
+                                    SISTEMA IA LISTO<br><span class="text-[8px] opacity-60">SI NO HAY CÁMARA SE GENERARÁ SIMULACIÓN</span>
+                                </div>
                             </div>
 
                             <div class="scan-line"></div>
 
                             <!-- Cargador Análisis -->
-                            <div id="analyzer-overlay" class="hidden absolute inset-0 bg-blue-900/40 backdrop-blur-xl flex flex-col items-center justify-center z-[60]">
-                                <i data-lucide="cpu" class="animate-spin w-16 h-16 text-blue-300"></i>
-                                <span id="analyzer-percent" class="text-4xl font-black italic mt-2">0%</span>
-                                <span id="analyzer-status" class="text-[10px] tracking-[0.8em] mt-4 animate-pulse">PROCESANDO_VISIÓN_ARTIFICIAL...</span>
+                            <div id="analyzer-overlay" class="hidden absolute inset-0 bg-emerald-50/90 backdrop-blur-md flex flex-col items-center justify-center z-[60]">
+                                <i data-lucide="search" class="animate-bounce w-16 h-16 text-emerald-500"></i>
+                                <span id="analyzer-percent" class="text-4xl font-black italic mt-2 text-emerald-700">0%</span>
+                                <span id="analyzer-status" class="text-[10px] tracking-[0.8em] mt-4 animate-pulse text-emerald-600 text-center">ANALIZANDO_BIOMETRÍA_Y_HALLAZGOS...</span>
                             </div>
 
                             <!-- Resultado del Diagnóstico -->
-                            <div id="result-overlay" class="hidden absolute inset-4 bg-slate-950/98 p-8 rounded-[3rem] border-2 border-blue-500/40 z-[70] overflow-y-auto flex flex-col md:flex-row gap-10">
-                                <div class="flex-1 rounded-3xl border border-blue-500/20 overflow-hidden bg-black flex items-center justify-center relative shadow-inner">
-                                    <img id="result-img" class="w-full h-full object-contain">
-                                    <div class="absolute bottom-4 right-4 bg-blue-600/80 px-3 py-1 rounded text-[8px] font-black italic">PROCESADO POR RED NEURONAL</div>
+                            <div id="result-overlay" class="hidden absolute inset-4 bg-white p-8 rounded-[3rem] border-2 border-emerald-500/20 z-[70] overflow-y-auto flex flex-col md:flex-row gap-10 shadow-2xl">
+                                <div class="flex-1 rounded-3xl border border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center relative shadow-inner min-h-[300px]">
+                                    <img id="result-img" class="w-full h-full object-cover">
+                                    <div class="absolute bottom-4 right-4 bg-emerald-600/80 text-white px-3 py-1 rounded text-[8px] font-black italic">PROCESADO POR RED NEURONAL</div>
                                 </div>
                                 <div class="flex-1 flex flex-col justify-center">
                                     <div class="flex justify-between items-start mb-4">
                                         <div>
-                                            <span id="result-badge" class="bg-blue-600 text-white text-[8px] px-3 py-1 rounded-full font-black italic mr-2 uppercase"></span>
-                                            <span id="result-zone" class="bg-slate-800 text-blue-400 text-[8px] px-3 py-1 rounded-full font-black italic uppercase"></span>
+                                            <span id="result-badge" class="bg-emerald-600 text-white text-[8px] px-3 py-1 rounded-full font-black italic mr-2 uppercase"></span>
+                                            <span id="result-zone" class="bg-slate-100 text-emerald-600 text-[8px] px-3 py-1 rounded-full font-black italic uppercase"></span>
                                         </div>
                                         <i data-lucide="shield-alert" class="text-orange-500 w-8 h-8"></i>
                                     </div>
-                                    <h2 id="result-diagnosis" class="text-3xl font-black italic text-white mb-6 leading-tight border-b border-white/10 pb-6 uppercase"></h2>
+                                    <h2 id="result-diagnosis" class="text-3xl font-black italic text-slate-800 mb-6 leading-tight border-b border-slate-100 pb-6 uppercase"></h2>
                                     <div class="space-y-6">
-                                        <div class="bg-white/5 p-4 rounded-2xl">
-                                            <h4 class="text-[8px] text-blue-500 mb-2 font-black">DESCRIPCIÓN TÉCNICA DEL HALLAZGO</h4>
-                                            <p id="result-description" class="text-xs text-slate-300 normal-case leading-relaxed font-sans"></p>
+                                        <div class="bg-slate-50 p-4 rounded-2xl">
+                                            <h4 class="text-[8px] text-emerald-600 mb-2 font-black">DESCRIPCIÓN TÉCNICA DEL HALLAZGO</h4>
+                                            <p id="result-description" class="text-xs text-slate-600 normal-case leading-relaxed font-sans"></p>
                                         </div>
                                         <div class="flex items-center gap-4">
-                                            <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                <div id="result-conf-bar" class="h-full bg-blue-500" style="width: 0%"></div>
+                                            <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                <div id="result-conf-bar" class="h-full bg-emerald-500" style="width: 0%"></div>
                                             </div>
-                                            <p id="result-conf-text" class="text-sm text-blue-400 font-bold tracking-tighter italic"></p>
+                                            <p id="result-conf-text" class="text-sm text-emerald-600 font-bold tracking-tighter italic"></p>
                                         </div>
-                                        <button onclick="closeResult()" class="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] text-white font-black hover:bg-white/10 tracking-widest uppercase transition-all">Descartar y Nuevo Escaneo</button>
+                                        <button onclick="closeResult()" class="w-full py-4 bg-slate-100 border border-slate-200 rounded-2xl text-[10px] text-slate-600 font-black hover:bg-slate-200 tracking-widest uppercase transition-all">Descartar y Nuevo Escaneo</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Barra de Estado Inferior -->
                         <div class="flex gap-6 h-28">
-                            <div class="flex-1 bg-slate-900/60 rounded-[2rem] p-5 border border-white/5 flex flex-col justify-between overflow-hidden">
+                            <div class="flex-1 bg-slate-50 rounded-[2rem] p-5 border border-slate-100 flex flex-col justify-between overflow-hidden">
                                 <div class="flex justify-between items-center mb-1">
-                                    <span class="text-[8px] text-slate-500 font-black">CANAL_NEURONAL_ACTIVO</span>
-                                    <span id="detection-label" class="text-[8px] text-blue-500 font-black">ESPERANDO_DETECCIÓN...</span>
+                                    <span class="text-[8px] text-slate-400 font-black">CANAL_NEURONAL_ACTIVO</span>
+                                    <span id="detection-label" class="text-[8px] text-emerald-600 font-black uppercase">ESPERANDO_INPUT...</span>
                                 </div>
                                 <div id="wave-container" class="flex gap-1 h-full items-end"></div>
                             </div>
-                            <button id="btn-scan-main" onclick="handleScanAction()" class="w-1/3 bg-blue-600 rounded-[2rem] font-black text-xs hover:bg-blue-500 active:scale-95 transition-all shadow-2xl border-t border-white/20 flex flex-col items-center justify-center gap-1">
-                                <i data-lucide="radio" id="icon-scan-btn" class="mb-1"></i>
-                                <span id="btn-scan-text">CONECTAR IA</span>
+                            <button id="btn-scan-main" onclick="handleScanAction()" class="w-1/3 bg-emerald-500 rounded-[2rem] text-white font-black text-xs hover:bg-emerald-600 active:scale-95 transition-all shadow-xl shadow-emerald-100 flex flex-col items-center justify-center gap-1">
+                                <i data-lucide="zap" id="icon-scan-btn" class="mb-1"></i>
+                                <span id="btn-scan-text">EJECUTAR IA</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- TABLA DE SELECCIÓN DE PRUEBAS -->
                     <div id="tab-tests" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6"></div>
 
-                    <!-- PESTAÑA HISTORIAL -->
                     <div id="tab-history" class="hidden flex flex-col gap-6 h-full">
-                        <h2 class="text-xl font-black italic flex items-center gap-3"><i data-lucide="database" class="text-blue-500"></i> REGISTRO DE ANOMALÍAS</h2>
+                        <h2 class="text-xl font-black italic flex items-center gap-3 text-slate-700"><i data-lucide="database" class="text-emerald-500"></i> REGISTRO DE ANOMALÍAS</h2>
                         <div id="history-list" class="flex-1 overflow-y-auto space-y-4 pr-2"></div>
                     </div>
 
-                    <!-- PESTAÑA AJUSTES -->
                     <div id="tab-settings" class="hidden max-w-2xl mx-auto w-full space-y-8">
-                        <div class="bg-slate-900/40 p-10 rounded-[3rem] border border-white/5 space-y-8">
-                            <h2 class="text-2xl font-black italic border-b border-blue-500/20 pb-4">Parámetros del Sistema</h2>
+                        <div class="bg-slate-50 p-10 rounded-[3rem] border border-slate-100 space-y-8">
+                            <h2 class="text-2xl font-black italic border-b border-emerald-500/20 pb-4 text-slate-700">Parámetros del Sistema</h2>
                             <div class="space-y-4">
                                 <div class="flex justify-between items-center">
                                     <span class="text-xs font-bold text-slate-400">SENSIBILIDAD DE IA</span>
-                                    <span id="range-val" class="text-blue-400 font-black text-2xl">95%</span>
+                                    <span id="range-val" class="text-emerald-600 font-black text-2xl">95%</span>
                                 </div>
-                                <input type="range" min="70" max="99" value="95" oninput="updateConfidence(this.value)" class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                                <input type="range" min="70" max="99" value="95" oninput="updateConfidence(this.value)" class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500">
                             </div>
                         </div>
                     </div>
@@ -234,6 +253,8 @@
     </div>
 
     <script>
+        const apiKey = ""; 
+
         // --- Gestión de Estado ---
         let currentPatient = null;
         let testType = 'RADIOGRAFÍA';
@@ -242,221 +263,251 @@
         let cameraActive = false;
         let confidenceLevel = 95;
         let detector = null;
-        let lastDetectedZone = "CUERPO_COMPLETO";
+        let currentDetectedZone = "GENERICO";
 
-        // --- Base de Datos de Diagnósticos (Simulación Médica Real) ---
+        // --- Datos Médicos Extendidos ---
         const medicalDatabase = {
-            "CABEZA": {
-                name: "REGIÓN CRANEAL",
+            "CABEZA": { 
+                name: "REGIÓN CRANEAL", 
                 anomalies: [
-                    { diag: "Sinusitis Etmoidal Aguda", desc: "Se observa opacidad significativa en los senos etmoidales con engrosamiento de la mucosa." },
-                    { diag: "Calcificación de la Glándula Pineal", desc: "Presencia de depósito de calcio fisiológico pero prominente en el eje central del cerebro." },
-                    { diag: "Asimetría en Calota Craneal", desc: "Variación estructural en el espesor del hueso parietal izquierdo. Sin signos de fractura." }
-                ]
+                    { diag: "Sinusitis Etmoidal Aguda", desc: "Se observa opacidad significativa en los senos etmoidales con engrosamiento de la mucosa e inflamación periorbitaria moderada." },
+                    { diag: "Calcificación Pineal", desc: "Presencia de depósito de calcio prominente en el eje central de la glándula pineal, compatible con la edad pero de tamaño inusual." },
+                    { diag: "Atrofia Cortical Difusa", desc: "Ampliación de los surcos cerebrales y dilatación ventricular leve observada en plano sagital." }
+                ],
+                search: "Radiografía de cráneo patología sinusitis"
             },
-            "TORSO": {
-                name: "REGIÓN TORACO-ABDOMINAL",
+            "TORSO": { 
+                name: "REGIÓN TORACO-ABDOMINAL", 
                 anomalies: [
-                    { diag: "Escoliosis Dorsal Incipiente", desc: "Desviación lateral de la columna vertebral con ángulo de Cobb inferior a 15 grados." },
-                    { diag: "Atelectasia Laminar", desc: "Pequeñas áreas de colapso pulmonar en base derecha, posiblemente subsegmentarias." },
-                    { diag: "Meteorismo Abdominal", desc: "Acumulación excesiva de gas en asas intestinales que dificulta la visión de órganos sólidos." }
-                ]
+                    { diag: "Escoliosis Dorsal Incipiente", desc: "Desviación lateral de la columna vertebral con ángulo de Cobb inferior a 15 grados en región T5-T9." },
+                    { diag: "Atelectasia Laminar", desc: "Pequeñas áreas de colapso pulmonar no segmentario en base derecha con elevación del hemidiafragma." },
+                    { diag: "Cardiomegalia Grado I", desc: "Aumento leve de la silueta cardíaca con índice cardiotorácico superior al 0.5." }
+                ],
+                search: "Radiografía de tórax cardiomegalia escoliosis"
             },
-            "BRAZOS": {
-                name: "EXTREMIDADES SUPERIORES",
+            "BRAZOS": { 
+                name: "EXTREMIDADES SUPERIORES", 
                 anomalies: [
-                    { diag: "Epicondilitis Lateral", desc: "Signos inflamatorios en la inserción de los tendones extensores (Codo de tenista)." },
-                    { diag: "Fisura en Radio Distal", desc: "Línea radiolúcida compatible con fractura incompleta sin desplazamiento." },
-                    { diag: "Tenosinovitis Estenosante", desc: "Engrosamiento de la vaina tendinosa compatible con limitación funcional del primer dedo." }
-                ]
+                    { diag: "Epicondilitis Lateral", desc: "Signos inflamatorios reactivos en la inserción de los tendones extensores del antebrazo." },
+                    { diag: "Fisura en Radio Distal", desc: "Línea radiolúcida sutil sin desplazamiento compatible con fractura de estrés incompleta." },
+                    { diag: "Artritis Reumatoide Incipiente", desc: "Pérdida de la densidad ósea periarticular en las articulaciones metacarpofalángicas." }
+                ],
+                search: "Radiografía de brazo fractura radio o artritis"
             },
-            "PIERNAS": {
-                name: "EXTREMIDADES INFERIORES",
+            "PIERNAS": { 
+                name: "EXTREMIDADES INFERIORES", 
                 anomalies: [
-                    { diag: "Gonartrosis Grado II", desc: "Disminución del espacio articular femorotibial con formación de osteofitos incipientes." },
-                    { diag: "Espolón Calcáneo", desc: "Prominencia ósea en la inserción de la fascia plantar en el hueso calcáneo." },
-                    { diag: "Edema de Partes Blandas", desc: "Aumento de densidad en tejido subcutáneo periférico compatible con retención hídrica." }
-                ]
+                    { diag: "Gonartrosis Grado II", desc: "Disminución asimétrica del espacio articular femorotibial con presencia de osteofitos marginales." },
+                    { diag: "Espolón Calcáneo", desc: "Prominencia ósea puntiaguda en la inserción de la fascia plantar en el calcáneo inferior." },
+                    { diag: "Tendinosis Aquilea", desc: "Engrosamiento focal del tendón de Aquiles con áreas de baja ecogenicidad." }
+                ],
+                search: "Radiografía de rodilla artrosis o calcáneo"
             },
-            "GENERICO": {
-                name: "EXPLORACIÓN GENERAL",
+            "GENERICO": { 
+                name: "EXPLORACIÓN GENERAL", 
                 anomalies: [
-                    { diag: "Anomalía no Identificada", desc: "El sistema detecta una densidad inusual. Se requiere una segunda opinión facultativa." }
-                ]
+                    { diag: "Anomalía de Densidad Ósea", desc: "Se detecta una variación atípica en la densidad cortical. Se recomienda contraste para descartar lesiones osteoblásticas." },
+                    { diag: "Linfadenopatía Detectada", desc: "Presencia de nódulos reactivos con aumento de tamaño en el área periférica escaneada." },
+                    { diag: "Quiste de Tejido Blando", desc: "Formación redondeada de contenido hipoecoico bien delimitada en el tejido celular subcutáneo." }
+                ],
+                search: "Radiografía médica hallazgo diagnóstico"
             }
         };
 
-        // --- Recursos Visuales ---
-        const svgContent = `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M50 88 C18 68 5 48 5 28 A15 15 0 0 1 48 28 L50 30 L52 28 A15 15 0 0 1 95 28 C95 48 82 68 50 88 Z" fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" /><path d="M15 45 L35 45 L40 35 L45 55 L50 45 L55 45 L60 30 L65 60 L70 45 L85 45" fill="none" stroke="#3b82f6" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="2 2" /><g fill="white"><circle cx="50" cy="35" r="5" /><line x1="50" y1="40" x2="50" y2="60" stroke="white" stroke-width="4" /><path d="M50 45 L35 32" stroke="white" stroke-width="4" /><path d="M50 45 L65 32" stroke="white" stroke-width="4" /><path d="M50 60 L40 80" stroke="white" stroke-width="4" /><path d="M50 60 L60 80" stroke="white" stroke-width="4" /></g></svg>`;
+        const randomData = {
+            names: [
+                { name: "CARLOS ARANDA RUIZ", gender: "man" },
+                { name: "MARÍA GARCÍA SOLER", gender: "woman" },
+                { name: "ELENA MARTÍNEZ CANO", gender: "woman" },
+                { name: "JORGE LUIS BORGES", gender: "man" },
+                { name: "ANA BELÉN ESTRADA", gender: "woman" }
+            ],
+            addresses: ["CALLE MAYOR 45, MADRID", "AV. DE LA SALUD 12, VALENCIA", "PASEO DE GRACIA 102, BARCELONA"],
+            operations: ["Apendicectomía (2015)", "Cirugía Refractiva Láser (2018)", "Septoplastia (2012)"],
+            chronic: ["Hipertensión Arterial", "Diabetes Tipo 2", "Asma Bronquial", "Ninguna declarada"]
+        };
+
+        // --- Utilidades IA ---
+        async function fetchImageFromGoogle(query) {
+            try {
+                // Buscamos una imagen real o usamos una generada si falla
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Provide an image search attribution for a professional medical imaging of: ${query}. Focus on clinical accuracy.` }] }],
+                        tools: [{ "google_search": {} }]
+                    })
+                });
+                const result = await response.json();
+                const attributions = result.candidates?.[0]?.groundingMetadata?.groundingAttributions;
+                
+                // Si tenemos una URL de búsqueda o imagen, la usamos. Si no, generamos una con el placeholder temático.
+                if (attributions && attributions.length > 0) {
+                    return attributions[0].uri;
+                }
+                throw new Error("No source found");
+            } catch (e) {
+                // Fallback: Generar una representación visual con un servicio de placeholder pero con texto médico
+                return `https://placehold.co/1200x800/222/10b981?text=${encodeURIComponent(query.replace(/Radiografía de /g, ''))}`;
+            }
+        }
+
+        async function generatePatientAvatar(patientName, gender) {
+            const prompt = `FOTORRETRATO DE UN PACIENTE CLÍNICO LLAMADO ${patientName}, ${gender === 'man' ? 'HOMBRE' : 'MUJER'}, MIRANDO A CÁMARA CON EXPRESIÓN NEUTRAL, FONDO DE HOSPITAL MINIMALISTA Y DESENFOCADO, 8K.`;
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ instances: { prompt: prompt }, parameters: { sampleCount: 1 } })
+                });
+                const result = await response.json();
+                return `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+            } catch (error) {
+                return `https://ui-avatars.com/api/?name=${encodeURIComponent(patientName)}&background=10b981&color=fff&size=256`;
+            }
+        }
+
+        // --- Lógica de Detección de Cuerpo ---
+        async function initDetector() {
+            try {
+                const model = poseDetection.SupportedModels.MoveNet;
+                detector = await poseDetection.createDetector(model, { 
+                    modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING 
+                });
+                console.log("Detector IA inicializado");
+            } catch (err) { console.error("Fallo al cargar modelo de pose:", err); }
+        }
+
+        function analyzeKeypoints(keypoints) {
+            const headPoints = keypoints.filter(k => k.score > 0.4 && ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear'].includes(k.name));
+            const torsoPoints = keypoints.filter(k => k.score > 0.4 && ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip'].includes(k.name));
+            const armPoints = keypoints.filter(k => k.score > 0.4 && ['left_elbow', 'right_elbow', 'left_wrist', 'right_wrist'].includes(k.name));
+            const legPoints = keypoints.filter(k => k.score > 0.4 && ['left_knee', 'right_knee', 'left_ankle', 'right_ankle'].includes(k.name));
+
+            if (headPoints.length > 2) return "CABEZA";
+            if (torsoPoints.length >= 2) return "TORSO";
+            if (legPoints.length >= 1) return "PIERNAS";
+            if (armPoints.length >= 1) return "BRAZOS";
+            return "GENERICO";
+        }
+
+        async function detectPose() {
+            if (!cameraActive || !detector) { 
+                if (cameraActive) requestAnimationFrame(detectPose);
+                return; 
+            }
+            const video = document.getElementById('video-element');
+            const canvas = document.getElementById('canvas-overlay');
+            const ctx = canvas.getContext('2d');
+            if (video.readyState < 2) { requestAnimationFrame(detectPose); return; }
+            
+            canvas.width = video.clientWidth; canvas.height = video.clientHeight;
+            try {
+                const poses = await detector.estimatePoses(video);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (poses.length > 0) {
+                    const keypoints = poses[0].keypoints;
+                    currentDetectedZone = analyzeKeypoints(keypoints);
+                    document.getElementById('detection-label').textContent = `DETECCIÓN: ${medicalDatabase[currentDetectedZone].name}`;
+                    
+                    keypoints.forEach(kp => {
+                        if (kp.score > 0.4) {
+                            ctx.beginPath(); ctx.arc(kp.x, kp.y, 6, 0, 2 * Math.PI); 
+                            ctx.fillStyle = "#10b981"; ctx.fill();
+                            ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+                        }
+                    });
+                }
+            } catch (err) {}
+            requestAnimationFrame(detectPose);
+        }
+
+        // --- Acciones de UI ---
+        const svgContent = `<svg viewBox="0 0 100 100" class="w-full h-full"><path d="M50 88 C18 68 5 48 5 28 A15 15 0 0 1 48 28 L50 30 L52 28 A15 15 0 0 1 95 28 C95 48 82 68 50 88 Z" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round" /><g fill="#334155"><circle cx="50" cy="35" r="5" /><line x1="50" y1="40" x2="50" y2="60" stroke="#334155" stroke-width="4" /><path d="M50 45 L35 32" stroke="#334155" stroke-width="4" /><path d="M50 45 L65 32" stroke="#334155" stroke-width="4" /><path d="M50 60 L40 80" stroke="#334155" stroke-width="4" /><path d="M50 60 L60 80" stroke="#334155" stroke-width="4" /></g></svg>`;
         document.getElementById('main-logo-svg').innerHTML = svgContent;
         document.getElementById('mini-logo').innerHTML = svgContent;
         lucide.createIcons();
 
-        // --- Visualizador de Stream Neuronal ---
-        const waveContainer = document.getElementById('wave-container');
-        for(let i=0; i<50; i++) {
-            const bar = document.createElement('div');
-            bar.className = 'flex-1 bg-blue-500/20 rounded-full h-[10%] transition-all duration-300';
-            waveContainer.appendChild(bar);
-        }
-        setInterval(() => {
-            if(!cameraActive) return;
-            waveContainer.childNodes.forEach(bar => {
-                const h = 10 + Math.random() * 80;
-                bar.style.height = h + '%';
-                bar.style.backgroundColor = h > 70 ? '#3b82f6' : 'rgba(59, 130, 246, 0.2)';
-            });
-        }, 150);
-
-        // --- Lógica de Detección con TensorFlow ---
-        async function initDetector() {
-            try {
-                const model = poseDetection.SupportedModels.MoveNet;
-                const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
-                detector = await poseDetection.createDetector(model, detectorConfig);
-                console.log("Detector de IA inicializado correctamente");
-            } catch (err) {
-                console.error("Error al inicializar el detector:", err);
-            }
-        }
-
-        async function detectPose() {
-            if (!cameraActive || !detector) {
-                requestAnimationFrame(detectPose);
-                return;
-            }
+        document.getElementById('btn-login').addEventListener('click', async () => {
+            const id = document.getElementById('input-id').value || "P-999";
+            const btn = document.getElementById('btn-login');
+            btn.disabled = true;
+            document.getElementById('login-text').textContent = "INICIANDO...";
             
-            const video = document.getElementById('video-element');
-            const canvas = document.getElementById('canvas-overlay');
-            const ctx = canvas.getContext('2d');
+            await generateRandomPatient(id.toUpperCase());
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-monitor').classList.remove('hidden');
+            document.getElementById('display-id').textContent = `ID: ${currentPatient.id}`;
+            document.getElementById('sidebar-avatar').src = currentPatient.photo;
             
-            if (video.readyState < 2) {
-                requestAnimationFrame(detectPose);
-                return;
-            }
-
-            canvas.width = video.clientWidth;
-            canvas.height = video.clientHeight;
-
-            try {
-                const poses = await detector.estimatePoses(video);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                if (poses.length > 0) {
-                    const keypoints = poses[0].keypoints.filter(kp => kp.score > 0.3);
-                    
-                    keypoints.forEach(kp => {
-                        ctx.beginPath();
-                        ctx.arc(kp.x, kp.y, 4, 0, 2 * Math.PI);
-                        ctx.fillStyle = "#3b82f6";
-                        ctx.fill();
-                        ctx.shadowBlur = 10;
-                        ctx.shadowColor = "#3b82f6";
-                    });
-
-                    identifyBodyPart(keypoints, canvas.height);
-                }
-            } catch (err) {
-                console.warn("Error en el ciclo de detección:", err);
-            }
-            requestAnimationFrame(detectPose);
-        }
-
-        function identifyBodyPart(keypoints, canvasHeight) {
-            const label = document.getElementById('detection-label');
-            
-            const head = keypoints.find(k => ['nose', 'left_eye', 'right_eye'].includes(k.name));
-            const shoulders = keypoints.filter(k => k.name.includes('shoulder'));
-            const hips = keypoints.filter(k => k.name.includes('hip'));
-            const knees = keypoints.filter(k => k.name.includes('knee'));
-
-            // Lógica basada en la altura relativa del punto clave más relevante
-            if (head && head.y < canvasHeight * 0.3) {
-                lastDetectedZone = "CABEZA";
-            } else if (shoulders.length > 0 && shoulders[0].y < canvasHeight * 0.6) {
-                lastDetectedZone = "TORSO";
-            } else if (knees.length > 0) {
-                lastDetectedZone = "PIERNAS";
-            } else if (keypoints.some(k => k.name.includes('wrist'))) {
-                lastDetectedZone = "BRAZOS";
-            } else {
-                lastDetectedZone = "GENERICO";
-            }
-            
-            label.textContent = `VIGILANCIA: ${lastDetectedZone}`;
-        }
-
-        // --- Autenticación y Navegación ---
-        document.getElementById('btn-login').addEventListener('click', () => {
-            const id = document.getElementById('input-id').value;
-            if(id.length >= 2) {
-                currentPatient = { id: id.toUpperCase() };
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('main-monitor').classList.remove('hidden');
-                document.getElementById('display-id').textContent = `ID: ${currentPatient.id}`;
-                renderTestsTab();
-                initDetector();
-            } else {
-                alert("INGRESE UN ID DE PACIENTE VÁLIDO");
-            }
+            renderTestsTab();
+            initDetector();
+            renderProfileContent();
         });
 
+        async function generateRandomPatient(id) {
+            const person = randomData.names[Math.floor(Math.random() * randomData.names.length)];
+            const photoUrl = await generatePatientAvatar(person.name, person.gender);
+            currentPatient = {
+                id: id, name: person.name, gender: person.gender, photo: photoUrl,
+                address: randomData.addresses[Math.floor(Math.random() * randomData.addresses.length)],
+                operations: [randomData.operations[Math.floor(Math.random() * randomData.operations.length)]],
+                chronic: [randomData.chronic[Math.floor(Math.random() * randomData.chronic.length)]]
+            };
+        }
+
         async function handleScanAction() {
-            if(!cameraActive) {
+            if (isAnalyzing) return;
+
+            if (!cameraActive) {
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: "user" } 
-                    });
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                     const video = document.getElementById('video-element');
                     video.srcObject = stream;
                     video.classList.remove('hidden');
                     document.getElementById('camera-placeholder').classList.add('hidden');
                     cameraActive = true;
-                    document.getElementById('btn-scan-text').textContent = "ANÁLISIS IA";
-                    document.getElementById('icon-scan-btn').setAttribute('data-lucide', 'activity');
-                    lucide.createIcons();
                     detectPose();
-                } catch(e) {
-                    alert("No se pudo acceder a la cámara. Asegúrese de estar en HTTPS y dar permisos.");
+                } catch (e) {
+                    console.log("Cámara no disponible, usando simulación");
+                    document.getElementById('detection-label').textContent = "MODO: SIMULACIÓN IA";
+                    currentDetectedZone = "GENERICO"; // Forzar genérico en simulación si no hay cámara
                 }
-            } else {
-                runAnalysisCycle();
             }
+            
+            runAnalysisCycle();
         }
 
         function runAnalysisCycle() {
-            if(isAnalyzing) return;
             isAnalyzing = true;
-            
             const overlay = document.getElementById('analyzer-overlay');
-            const percentText = document.getElementById('analyzer-percent');
             overlay.classList.remove('hidden');
-
             let p = 0;
             const interval = setInterval(() => {
-                p += 2;
-                percentText.textContent = p + '%';
-                if(p >= 100) {
-                    clearInterval(interval);
-                    generateMedicalReport();
-                }
-            }, 40);
+                p += Math.floor(Math.random() * 5) + 1;
+                if (p > 100) p = 100;
+                document.getElementById('analyzer-percent').textContent = p + '%';
+                if(p >= 100) { clearInterval(interval); finishAnalysis(); }
+            }, 50);
         }
 
-        function generateMedicalReport() {
-            const zoneData = medicalDatabase[lastDetectedZone] || medicalDatabase["GENERICO"];
-            const anomaly = zoneData.anomalies[Math.floor(Math.random() * zoneData.anomalies.length)];
-            const conf = (confidenceLevel + (Math.random() * 4)).toFixed(1).replace('.', ',') + '%';
+        async function finishAnalysis() {
+            const zone = medicalDatabase[currentDetectedZone];
+            const anomaly = zone.anomalies[Math.floor(Math.random() * zone.anomalies.length)];
             
+            // Construimos una query de búsqueda muy específica para obtener una imagen coherente
+            const searchQuery = `medical ${testType.toLowerCase()} of ${anomaly.diag}`;
+            const imageUrl = await fetchImageFromGoogle(searchQuery);
+
             const report = {
                 id: Date.now(),
                 type: testType,
-                zoneName: zoneData.name,
+                zoneName: zone.name,
                 diagnosis: anomaly.diag,
                 description: anomaly.desc,
-                confidence: conf,
-                timestamp: new Date().toLocaleTimeString(),
-                image: `https://placehold.co/800x600/020617/3b82f6?text=${testType}+${lastDetectedZone}`
+                confidence: (90 + Math.random() * 9).toFixed(1) + "%",
+                image: imageUrl
             };
 
             scanHistory.unshift(report);
@@ -467,73 +518,96 @@
             isAnalyzing = false;
             document.getElementById('analyzer-overlay').classList.add('hidden');
             document.getElementById('result-overlay').classList.remove('hidden');
-            
             document.getElementById('result-img').src = res.image;
             document.getElementById('result-badge').textContent = res.type;
             document.getElementById('result-zone').textContent = res.zoneName;
             document.getElementById('result-diagnosis').textContent = res.diagnosis;
             document.getElementById('result-description').textContent = res.description;
             document.getElementById('result-conf-text').textContent = "CONFIANZA IA: " + res.confidence;
-            document.getElementById('result-conf-bar').style.width = res.confidence.replace(',', '.');
+            document.getElementById('result-conf-bar').style.width = res.confidence;
         }
 
-        function closeResult() {
-            document.getElementById('result-overlay').classList.add('hidden');
+        function renderProfileContent() {
+            const container = document.getElementById('profile-content');
+            container.innerHTML = `
+                <div class="relative group mb-8">
+                    <img src="${currentPatient.photo}" class="w-full h-48 object-cover rounded-3xl border border-slate-100 shadow-sm" alt="Paciente">
+                </div>
+                <div class="space-y-4">
+                    <div><p class="text-[8px] text-emerald-600 font-bold">NOMBRE COMPLETO</p><p class="text-xs font-black text-slate-700">${currentPatient.name}</p></div>
+                    <div><p class="text-[8px] text-emerald-600 font-bold">DIRECCIÓN</p><p class="text-[10px] text-slate-500 font-sans">${currentPatient.address}</p></div>
+                    <div class="pt-4 border-t border-slate-100">
+                        <p class="text-[8px] text-emerald-600 font-bold mb-2">ANTECEDENTES</p>
+                        ${currentPatient.chronic.map(ch => `<p class="text-[10px] bg-emerald-50 p-2 rounded-lg text-emerald-700 font-bold italic">${ch}</p>`).join('')}
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
         }
 
+        function closeResult() { document.getElementById('result-overlay').classList.add('hidden'); }
+        function toggleProfile() { document.getElementById('profile-drawer').classList.toggle('closed'); }
+        function logout() { location.reload(); }
+        function updateConfidence(val) { confidenceLevel = val; document.getElementById('range-val').textContent = val + '%'; }
+        
         function switchTab(tab) {
             ['scan', 'tests', 'history', 'settings'].forEach(t => {
                 document.getElementById(`tab-${t}`).classList.add('hidden');
-                document.getElementById(`nav-${t}`).classList.replace('text-blue-500', 'text-slate-600');
+                document.getElementById(`nav-${t}`).classList.replace('text-emerald-600', 'text-slate-400');
             });
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
-            document.getElementById(`nav-${tab}`).classList.replace('text-slate-600', 'text-blue-500');
+            document.getElementById(`nav-${tab}`).classList.replace('text-slate-400', 'text-emerald-600');
             if(tab === 'tests') renderTestsTab();
-            if(tab === 'history') updateHistoryUI();
+            if(tab === 'history') renderHistory();
         }
 
         function renderTestsTab() {
-            const tests = [
-                { id: 'RADIOGRAFÍA', icon: 'zap' },
-                { id: 'ECOGRAFÍA', icon: 'waves' },
-                { id: 'RESONANCIA', icon: 'magnet' }
-            ];
-            document.getElementById('tab-tests').innerHTML = tests.map(t => `
-                <div onclick="testType='${t.id}'; switchTab('scan')" class="p-8 rounded-[2.5rem] border-2 transition-all ${testType === t.id ? 'border-blue-500 bg-blue-500/10' : 'border-white/10'} flex flex-col items-center gap-4 cursor-pointer hover:border-blue-500/50 uppercase">
-                    <i data-lucide="${t.icon}" class="w-12 h-12 ${testType === t.id ? 'text-blue-400' : 'text-slate-500'}"></i>
-                    <span class="font-black italic">${t.id}</span>
+            const tests = [{ id: 'RADIOGRAFÍA', icon: 'zap' }, { id: 'ECOGRAFÍA', icon: 'waves' }, { id: 'RESONANCIA', icon: 'magnet' }];
+            document.getElementById('tab-tests').innerHTML = tests.map(t => `<div onclick="testType='${t.id}'; switchTab('scan')" class="p-8 rounded-[2.5rem] border-2 transition-all ${testType === t.id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-100'} flex flex-col items-center gap-4 cursor-pointer hover:border-emerald-500/50 uppercase"><i data-lucide="${t.icon}" class="w-12 h-12 ${testType === t.id ? 'text-emerald-600' : 'text-slate-300'}"></i><span class="font-black italic text-slate-700">${t.id}</span></div>`).join('');
+            lucide.createIcons();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            if(scanHistory.length === 0) {
+                container.innerHTML = `<p class="text-[10px] text-slate-400 text-center py-20 italic">SIN REGISTROS EN LA SESIÓN ACTUAL</p>`;
+                return;
+            }
+            container.innerHTML = scanHistory.map(h => `
+                <div class="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 hover:border-emerald-200 transition-all cursor-pointer">
+                    <img src="${h.image}" class="w-16 h-16 rounded-xl object-cover border border-slate-200">
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center">
+                             <p class="text-[8px] font-black text-emerald-600">${h.type} - ${h.zoneName}</p>
+                             <span class="text-[7px] text-slate-300 font-mono">${new Date(h.id).toLocaleTimeString()}</span>
+                        </div>
+                        <p class="text-xs font-black text-slate-700 uppercase truncate max-w-[200px]">${h.diagnosis}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <div class="w-12 h-1 bg-slate-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-emerald-500" style="width: ${h.confidence}"></div>
+                            </div>
+                            <p class="text-[8px] text-slate-400 uppercase italic">IA ${h.confidence}</p>
+                        </div>
+                    </div>
                 </div>
             `).join('');
-            lucide.createIcons();
-            document.getElementById('display-test').textContent = testType;
         }
 
-        function updateHistoryUI() {
-            const list = document.getElementById('history-list');
-            list.innerHTML = scanHistory.map(item => `
-                <div class="bg-slate-900/80 border border-white/5 p-5 rounded-3xl flex justify-between items-center group hover:border-blue-500/30 transition-all">
-                    <div>
-                        <span class="text-[7px] text-blue-500 font-bold">${item.zoneName} / ${item.type}</span>
-                        <h3 class="text-sm font-black italic text-white">${item.diagnosis}</h3>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[10px] text-blue-400 font-black">${item.confidence}</span>
-                        <p class="text-[7px] text-slate-600">${item.timestamp}</p>
-                    </div>
-                </div>
-            `).join('') || '<div class="h-40 flex items-center justify-center opacity-20 text-[10px] tracking-[0.5em]">HISTORIAL_VACÍO</div>';
+        // Ondas de fondo dinámicas
+        const waveContainer = document.getElementById('wave-container');
+        for(let i=0; i<40; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'flex-1 bg-emerald-500/10 rounded-full h-[10%] transition-all duration-300';
+            waveContainer.appendChild(bar);
         }
-
-        function logout() { 
-            if(confirm("¿Cerrar sesión y reiniciar sistema?")) {
-                location.reload(); 
-            }
-        }
-        
-        function updateConfidence(val) {
-            confidenceLevel = parseInt(val);
-            document.getElementById('range-val').textContent = val + '%';
-        }
+        setInterval(() => {
+            waveContainer.childNodes.forEach(bar => {
+                const h = 5 + Math.random() * (isAnalyzing ? 90 : 20);
+                bar.style.height = h + '%';
+                if (isAnalyzing) bar.classList.replace('bg-emerald-500/10', 'bg-emerald-500/40');
+                else bar.classList.replace('bg-emerald-500/40', 'bg-emerald-500/10');
+            });
+        }, 100);
 
     </script>
 </body>
